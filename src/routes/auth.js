@@ -37,6 +37,7 @@ router.post(
     body('password').notEmpty().withMessage('Password is required'),
   ],
   (req, res) => {
+    console.log('[login] handler reached');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).render('login', { title: 'Login', errors: errors.array() });
@@ -44,11 +45,14 @@ router.post(
 
     const { username, password } = req.body;
     const user = User.findByUsername(username);
+    console.log('[login] user lookup done, found:', !!user);
     const genericError = 'Invalid username or password.';
 
     if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
+      console.log('[login] password check failed');
       return res.status(401).render('login', { title: 'Login', errors: [{ msg: genericError }] });
     }
+    console.log('[login] password check passed');
 
     if (!user.isActive) {
       return res
@@ -58,8 +62,12 @@ router.post(
 
     // Regenerate the session on privilege change to prevent session fixation.
     req.session.regenerate((err) => {
-      if (err) return res.status(500).send('Login failed');
+      if (err) {
+        console.log('[login] session.regenerate error:', err);
+        return res.status(500).send('Login failed');
+      }
       req.session.userId = user.id;
+      console.log('[login] session regenerated, redirecting to /dashboard');
       res.redirect('/dashboard');
     });
   }
