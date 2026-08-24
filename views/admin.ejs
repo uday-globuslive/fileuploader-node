@@ -31,9 +31,9 @@
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 <button type="submit" class="link-btn"><%= u.isAdmin ? 'Revoke admin' : 'Make admin' %></button>
               </form>
-              <form action="/admin/users/<%= u.id %>/delete" method="POST" class="inline-form">
+              <form action="/admin/users/<%= u.id %>/delete" method="POST" class="inline-form" data-confirm="Delete this user and all their files?">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-                <button type="submit" class="link-btn danger" onclick="return confirm('Delete this user and all their files?')">Delete</button>
+                <button type="submit" class="link-btn danger">Delete</button>
               </form>
             <% } else { %>
               <span class="muted">(you)</span>

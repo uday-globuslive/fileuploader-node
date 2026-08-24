@@ -22,43 +22,66 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: config.maxUploadBytes, files: 1 },
+  limits: { fileSize: config.maxUploadBytes, files: config.maxUploadFiles },
 });
 
+function formatSize(bytes) {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return `${gb % 1 === 0 ? gb : gb.toFixed(1)} GB`;
+  const mb = bytes / (1024 * 1024);
+  return `${mb % 1 === 0 ? mb : mb.toFixed(1)} MB`;
+}
+
+function uploadErrorMessage(err) {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return `One of your files is too large. Each file must be ${formatSize(config.maxUploadBytes)} or smaller.`;
+  }
+  if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return `You can upload at most ${config.maxUploadFiles} files at a time.`;
+  }
+  return err.message || 'Upload failed.';
+}
 
 router.get('/dashboard', requireLogin, requireActive, (req, res) => {
   const files = FileRecord.findByOwner(req.user.id).sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
-  res.render('dashboard', { title: 'My Files', files });
+  res.render('dashboard', {
+    title: 'My Files',
+    files,
+    maxUploadFiles: config.maxUploadFiles,
+    maxUploadSize: formatSize(config.maxUploadBytes),
+  });
 });
 
 router.post('/upload', requireLogin, requireActive, (req, res) => {
   // multipart/form-data bodies aren't parsed yet at this point, so the CSRF
   // token (which lives in that body) can only be checked once multer has run.
-  upload.single('file')(req, res, (err) => {
+  upload.array('files', config.maxUploadFiles)(req, res, (err) => {
     if (err) {
-      res.setFlash('error', err.message || 'Upload failed.');
+      res.setFlash('error', uploadErrorMessage(err));
       return res.redirect('/dashboard');
     }
 
     if (!isValidCsrfToken(req)) {
-      if (req.file) fs.unlink(req.file.path, () => {});
+      (req.files || []).forEach((f) => fs.unlink(f.path, () => {}));
       return res.status(403).send('Invalid or missing CSRF token');
     }
 
-    if (!req.file) {
-      res.setFlash('error', 'Please choose a file to upload.');
+    if (!req.files || !req.files.length) {
+      res.setFlash('error', 'Please choose at least one file to upload.');
       return res.redirect('/dashboard');
     }
 
-    FileRecord.create({
-      ownerId: req.user.id,
-      originalName: req.file.originalname,
-      storedName: req.file.filename,
-      size: req.file.size,
-      mimeType: req.file.mimetype,
+    req.files.forEach((file) => {
+      FileRecord.create({
+        ownerId: req.user.id,
+        originalName: file.originalname,
+        storedName: file.filename,
+        size: file.size,
+        mimeType: file.mimetype,
+      });
     });
 
-    res.setFlash('success', 'File uploaded successfully.');
+    res.setFlash('success', `${req.files.length} file(s) uploaded successfully.`);
     res.redirect('/dashboard');
   });
 });

@@ -90,7 +90,7 @@ folder. A template is provided as `.env.example`.
    | `ADMIN_USERNAME` | Username of the built-in admin account | e.g. `admin` |
    | `ADMIN_EMAIL` | Email of the built-in admin account | e.g. `admin@yourcompany.com` |
    | `ADMIN_PASSWORD` | Password for the built-in admin account | Leave **blank** to have the app auto-generate a strong random one (recommended) — see step 6 |
-   | `MAX_UPLOAD_BYTES` | Maximum size of a single uploaded file, in bytes | `20971520` = 20 MB. Increase/decrease as needed |
+   | `MAX_UPLOAD_BYTES` | Maximum size of a single uploaded file, in bytes | `21474836480` = 20 GB. Increase/decrease as needed |
 
 ### Generating a random `SESSION_SECRET`
 

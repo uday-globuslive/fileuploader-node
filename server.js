@@ -63,6 +63,13 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something went wrong.');
 });
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`Server listening on http://localhost:${config.port}`);
 });
+
+// Large uploads (up to MAX_UPLOAD_BYTES) can take longer than Node's default
+// 5-minute request timeout on slow connections; disable it so transfers
+// aren't cut off mid-upload. Header-only timeout stays short to still guard
+// against slow-header DoS attempts.
+server.requestTimeout = 0;
+server.headersTimeout = 60_000;

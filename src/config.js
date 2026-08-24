@@ -8,7 +8,8 @@ module.exports = {
   adminUsername: process.env.ADMIN_USERNAME || 'admin',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
   adminPassword: process.env.ADMIN_PASSWORD || '',
-  maxUploadBytes: parseInt(process.env.MAX_UPLOAD_BYTES, 10) || 20 * 1024 * 1024,
+  maxUploadBytes: parseInt(process.env.MAX_UPLOAD_BYTES, 10) || 20 * 1024 * 1024 * 1024,
+  maxUploadFiles: parseInt(process.env.MAX_UPLOAD_FILES, 10) || 10,
   uploadDir: path.join(__dirname, '..', 'uploads'),
   dataDir: path.join(__dirname, '..', 'data'),
 };

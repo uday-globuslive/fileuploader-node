@@ -138,3 +138,8 @@ button:hover, .link-btn:hover { background: var(--primary-dark); }
 .badge { padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.78rem; }
 .badge-on { background: #ecfdf5; color: #065f46; }
 .badge-off { background: #fef2f2; color: #991b1b; }
+
+.progress-wrap { margin-top: 1rem; }
+.progress-track { background: var(--border); border-radius: 999px; height: 10px; overflow: hidden; }
+.progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.15s ease; }
+.progress-label { display: inline-block; margin-top: 0.35rem; font-size: 0.85rem; color: var(--muted); }
