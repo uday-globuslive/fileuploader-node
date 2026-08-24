@@ -33,6 +33,17 @@ app.use(
     // behind a reverse proxy) - otherwise browsers get stuck retrying HTTPS
     // against a plain-HTTP server and every subsequent request appears to hang.
     hsts: config.isProd,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: config.isProd
+        ? {}
+        : // Helmet's default CSP always adds upgrade-insecure-requests, which
+          // makes browsers silently rewrite every http:// asset/form request
+          // (CSS, JS, login POST) on this page to https:// - breaking
+          // everything except localhost (the one origin browsers treat as
+          // secure over plain HTTP). Drop it until served over real TLS.
+          { upgradeInsecureRequests: null },
+    },
   })
 );
 app.use(express.urlencoded({ extended: false }));
