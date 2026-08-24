@@ -71,8 +71,8 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something went wrong.');
 });
 
-const server = app.listen(config.port, () => {
-  console.log(`Server listening on http://localhost:${config.port}`);
+const server = app.listen(config.port, config.bindHost, () => {
+  console.log(`Server listening on http://${config.bindHost}:${config.port}`);
 });
 
 // Large uploads (up to MAX_UPLOAD_BYTES) can take longer than Node's default

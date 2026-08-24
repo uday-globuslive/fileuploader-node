@@ -216,38 +216,106 @@ sudo systemctl enable --now fileuploader
 sudo systemctl status fileuploader
 ```
 
-### Making it reachable on port 80/443 (optional)
+### Making it reachable on port 80/443 (recommended) — nginx reverse proxy
 
-Put a reverse proxy (Nginx, Caddy, or IIS on Windows) in front of the Node
-app so users can reach it via a normal domain name over HTTPS, instead of
-`http://server-ip:3000`. This also lets you terminate SSL/TLS certificates
-(e.g. via Let's Encrypt) at the proxy. Example Nginx site config:
+Right now the app is directly exposed to the internet on its own port (e.g.
+`:3000`). The recommended setup is to put nginx in front of it, so nginx is
+the only thing the public internet ever talks to, and Node only accepts
+connections from nginx itself (`127.0.0.1`). This also avoids browser issues
+where a `Strict-Transport-Security` header sent directly by the app causes
+the browser to force-upgrade a plain-HTTP IP address to HTTPS and fail.
 
+These steps assume a Debian/Ubuntu Linux server (adjust package manager for
+other distros; on Windows Server use IIS + Application Request Routing
+instead, or run nginx via WSL).
+
+**Step 1 — Lock the Node app to localhost only.**
+
+In the app's `.env`, set:
+```
+BIND_HOST=127.0.0.1
+```
+Restart the app. It will now refuse connections from anywhere except the
+same machine — even if a firewall rule accidentally allows the port, no one
+outside the server can reach Node directly anymore.
+
+**Step 2 — Install nginx.**
+```bash
+sudo apt update
+sudo apt install -y nginx
+```
+
+**Step 3 — Create a site config for the app.**
+```bash
+sudo nano /etc/nginx/sites-available/fileuploader
+```
+Paste (replace `server_name` with your domain, or use `_` to match any
+hostname/IP if you don't have a domain yet):
 ```nginx
 server {
     listen 80;
-    server_name files.yourcompany.com;
+    server_name _;   # or files.yourcompany.com
+
+    client_max_body_size 20G;  # must be >= MAX_UPLOAD_BYTES in .env
 
     location / {
         proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;   # allow long uploads to complete
+        proxy_send_timeout 3600s;
     }
 }
 ```
 
-Set `NODE_ENV=production` in `.env` when using HTTPS in front of the app —
-this makes login cookies `Secure` (browser will only send them over HTTPS).
+**Step 4 — Enable the site and reload nginx.**
+```bash
+sudo ln -s /etc/nginx/sites-available/fileuploader /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default   # remove the default placeholder site
+sudo nginx -t                                 # test the config for syntax errors
+sudo systemctl reload nginx
+```
+
+**Step 5 — Update firewall / NSG rules.**
+- Allow inbound `80` (and `443` once you add TLS) in the OS firewall
+  (`sudo ufw allow 80,443/tcp`) and in the cloud NSG/security group.
+- You can now remove/close the inbound rule for the app's own port (`3000`)
+  entirely — since `BIND_HOST=127.0.0.1`, it wouldn't accept the connection
+  anyway, but closing it at the firewall/NSG is good defense in depth.
+
+Access the app at `http://<server-ip>/` (no more `:3000`) or your domain.
+
+**Step 6 — Add real HTTPS (needs a domain name).**
+Let's Encrypt cannot issue a certificate for a bare IP address — you need a
+domain name pointed at the server first. Once you have one:
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d files.yourcompany.com
+```
+Certbot edits the nginx config to add the certificate and redirect HTTP to
+HTTPS, and sets up auto-renewal. Once this is in place, set `NODE_ENV=production`
+in the app's `.env` and restart it — this makes the session cookie `Secure`
+(browser-enforced HTTPS-only) and re-enables the HSTS header, which is only
+safe to send once HTTPS is actually working end-to-end.
+
+If you only have an IP address and no domain, stay on plain HTTP through
+nginx (skip this step) and keep `NODE_ENV=development` — don't enable HSTS
+without real HTTPS in place, or browsers will force-upgrade to HTTPS and
+fail exactly like the raw-Node setup did.
 
 ---
 
 ## 9. Firewall / networking checklist
 
-- Open the port the app listens on (default `3000`), or the reverse proxy's
-  port (`80`/`443`), in your server's firewall / cloud security group.
+- If using nginx (recommended): open `80`/`443` only; the app's own port
+  (`3000` by default) can be closed at the firewall/NSG once `BIND_HOST=127.0.0.1`
+  is set, since nginx is the only public entry point.
+- If not using nginx: open the app's own port (default `3000`) in your
+  server's firewall / cloud security group.
 - If deploying to a cloud VM (Azure, AWS, GCP), make sure the inbound rule for
-  that port is added to the VM's network security group.
+  whichever port you're exposing is added to the VM's network security group.
 
 ---
 
