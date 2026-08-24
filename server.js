@@ -26,16 +26,15 @@ app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(helmet());
-app.use((req, res, next) => {
-  // Temporary diagnostic logging to trace where remote requests stall.
-  const start = Date.now();
-  console.log(`[req] ${req.method} ${req.url} - received`);
-  res.on('finish', () => {
-    console.log(`[req] ${req.method} ${req.url} - ${res.statusCode} (${Date.now() - start}ms)`);
-  });
-  next();
-});
+app.use(
+  helmet({
+    // HSTS tells browsers to force HTTPS for this host for months afterward.
+    // Only safe to enable once this app is actually served over TLS (e.g.
+    // behind a reverse proxy) - otherwise browsers get stuck retrying HTTPS
+    // against a plain-HTTP server and every subsequent request appears to hang.
+    hsts: config.isProd,
+  })
+);
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
