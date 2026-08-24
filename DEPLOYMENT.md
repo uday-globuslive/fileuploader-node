@@ -305,6 +305,83 @@ nginx (skip this step) and keep `NODE_ENV=development` — don't enable HSTS
 without real HTTPS in place, or browsers will force-upgrade to HTTPS and
 fail exactly like the raw-Node setup did.
 
+### nginx on Windows Server (instead of the Linux steps above)
+
+If your server is Windows instead of Linux, use these steps in place of
+steps 2–5 above (step 1 — setting `BIND_HOST=127.0.0.1` — is the same on
+any OS).
+
+**Step 1 — Download and extract nginx.**
+1. Download the latest **mainline** Windows zip from
+   https://nginx.org/en/download.html
+2. Extract it to `C:\nginx` (so `nginx.exe` ends up at `C:\nginx\nginx.exe`).
+
+**Step 2 — Edit the config.**
+Open `C:\nginx\conf\nginx.conf` in a text editor and replace the default
+`server { ... }` block inside `http { ... }` with:
+```nginx
+server {
+    listen 80;
+    server_name _;   # or files.yourcompany.com
+
+    client_max_body_size 20G;  # must be >= MAX_UPLOAD_BYTES in .env
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
+```
+
+**Step 3 — Start nginx.**
+Open PowerShell as Administrator:
+```powershell
+cd C:\nginx
+Start-Process .\nginx.exe
+```
+nginx runs as a background process (there's no window). Useful commands from
+the same `C:\nginx` folder:
+```powershell
+.\nginx.exe -t          # test the config for syntax errors
+.\nginx.exe -s reload   # reload after editing nginx.conf
+.\nginx.exe -s stop     # stop nginx
+```
+
+**Step 4 — Run nginx as a proper Windows service (recommended).**
+Plain `nginx.exe` won't survive a reboot or restart itself if it crashes. Use
+NSSM (Non-Sucking Service Manager) to wrap it as a real service:
+```powershell
+# Download NSSM from https://nssm.cc/download and extract it, then:
+cd C:\path\to\nssm\win64
+.\nssm.exe install nginx "C:\nginx\nginx.exe"
+.\nssm.exe set nginx AppDirectory "C:\nginx"
+Start-Service nginx
+```
+
+**Step 5 — Update the Windows Firewall.**
+```powershell
+New-NetFirewallRule -DisplayName "nginx HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
+New-NetFirewallRule -DisplayName "nginx HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
+```
+Also make sure the corresponding inbound rule is added in your cloud NSG
+(Azure/AWS/etc.) if applicable. You can remove/close the rule for the app's
+own port (`3000`) since `BIND_HOST=127.0.0.1` already blocks external access
+to it directly.
+
+**Step 6 — Add real HTTPS (needs a domain name).**
+Use **win-acme** (https://www.win-acme.com/) — a free Let's Encrypt client
+for Windows. Download it, run `wacme.exe` as Administrator, and follow the
+prompts to issue a certificate for your domain and bind it in nginx (or IIS
+if you're using that instead). As with Linux, Let's Encrypt cannot issue a
+certificate for a bare IP address — you need a domain pointed at the server
+first. Once HTTPS is working end-to-end, set `NODE_ENV=production` in `.env`
+and restart the app.
+
 ---
 
 ## 9. Firewall / networking checklist
