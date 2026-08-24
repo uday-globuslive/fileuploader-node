@@ -1,0 +1,48 @@
+<%- include('partials/header') %>
+
+<div class="card">
+  <h1>Manage users</h1>
+  <table class="file-table">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Active</th>
+        <th>Admin</th>
+        <th>Joined</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(function(u) { %>
+        <tr>
+          <td><%= u.username %></td>
+          <td><%= u.email %></td>
+          <td><span class="badge <%= u.isActive ? 'badge-on' : 'badge-off' %>"><%= u.isActive ? 'Active' : 'Inactive' %></span></td>
+          <td><span class="badge <%= u.isAdmin ? 'badge-on' : 'badge-off' %>"><%= u.isAdmin ? 'Admin' : 'User' %></span></td>
+          <td><%= new Date(u.createdAt).toLocaleDateString() %></td>
+          <td class="actions">
+            <% if (u.id !== currentUser.id) { %>
+              <form action="/admin/users/<%= u.id %>/toggle-active" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="link-btn"><%= u.isActive ? 'Deactivate' : 'Activate' %></button>
+              </form>
+              <form action="/admin/users/<%= u.id %>/toggle-admin" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="link-btn"><%= u.isAdmin ? 'Revoke admin' : 'Make admin' %></button>
+              </form>
+              <form action="/admin/users/<%= u.id %>/delete" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="link-btn danger" onclick="return confirm('Delete this user and all their files?')">Delete</button>
+              </form>
+            <% } else { %>
+              <span class="muted">(you)</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,22 @@
+{
+  "name": "fileuploader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "File upload/download web app with login, registration and admin approval",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.2.0",
+    "helmet": "^7.1.0",
+    "multer": "^2.2.0",
+    "uuid": "^11.1.0"
+  }
+}
